@@ -1,0 +1,67 @@
+name: Build and Deploy JAR app to Azure Web App - demobackend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # Checkout code from GitHub
+      - uses: actions/checkout@v4
+
+      # Set up Java version
+      - name: Set up Java version
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'microsoft'
+
+      # Build with Maven inside BankingApplication folder
+      - name: Build with Maven
+        working-directory: BankingApplication
+        run: mvn clean package  # Ensure JAR is built
+
+      # Upload the JAR file for deployment
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-app
+          path: 'BankingApplication/target/*.jar'  # Specify JAR file
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write
+
+    steps:
+      # Download the JAR artifact from the build job
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: java-app
+
+      # Log in to Azure using Azure service principal credentials
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Deploy the JAR file to Azure Web App
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'hehehe'
+          slot-name: 'production'
+          package: 'BankingApplication/target/*.jar'  # Deploy JAR file
